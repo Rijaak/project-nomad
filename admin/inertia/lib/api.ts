@@ -18,6 +18,7 @@ import { BenchmarkType, RunBenchmarkResponse, SubmitBenchmarkResponse, UpdateBui
 import type { CreateMapMarkerPayload, MapMarkerResponse, UpdateMapMarkerPayload } from '../../types/maps'
 import type { ChatSource } from '../../types/chat'
 import { chatStreamErrorMessage } from './chat_stream.js'
+import type { RosettaOverview } from '../../types/rosetta_jane'
 
 type OllamaChatRequestWithImages = OllamaChatRequest & { images?: File[] }
 
@@ -1277,6 +1278,103 @@ class API {
       )
       return response.data
     })()
+  }
+
+  // -- Rosetta-Jane ------------------------------------------------------------
+  // These throw with the server's own message (the gateway's problems are worded
+  // for the user), so callers can show `error.message` directly.
+  private async rosetta<T>(call: () => Promise<{ data: T }>): Promise<T> {
+    try {
+      return (await call()).data
+    } catch (error: any) {
+      throw new Error(error?.response?.data?.message || error?.message || 'Rosetta-Jane request failed.')
+    }
+  }
+
+  async getRosettaOverview(): Promise<RosettaOverview> {
+    return this.rosetta(() => this.client.get<RosettaOverview>('/rosetta-jane/overview'))
+  }
+
+  async connectRosetta(url: string, token: string | null) {
+    return this.rosetta(() =>
+      this.client.post<{ success: boolean; message: string }>('/rosetta-jane/connect', { url, token })
+    )
+  }
+
+  async disconnectRosetta() {
+    return this.rosetta(() => this.client.post<{ success: boolean; message: string }>('/rosetta-jane/disconnect'))
+  }
+
+  async setRosettaServiceState(change: { on?: boolean; training?: boolean }) {
+    return this.rosetta(() => this.client.post<{ success: boolean }>('/rosetta-jane/service', change))
+  }
+
+  async startRosettaTraining(file: File, name: string, epochs: number) {
+    const form = new FormData()
+    form.append('file', file, file.name)
+    form.append('name', name)
+    form.append('epochs', String(epochs))
+    return this.rosetta(() =>
+      this.client.post<{ success: boolean; problems: string[] }>('/rosetta-jane/train', form, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: 180_000,
+      })
+    )
+  }
+
+  async importRosettaAdapter(file: File, name: string) {
+    const form = new FormData()
+    form.append('file', file, file.name)
+    form.append('name', name)
+    return this.rosetta(() =>
+      this.client.post<{ success: boolean; message: string }>('/rosetta-jane/adapters/import', form, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: 180_000,
+      })
+    )
+  }
+
+  async scoreRosettaAdapter(file: File, name: string) {
+    const form = new FormData()
+    form.append('file', file, file.name)
+    form.append('name', name)
+    return this.rosetta(() =>
+      this.client.post<{ success: boolean; problems: string[] }>('/rosetta-jane/adapters/score', form, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: 180_000,
+      })
+    )
+  }
+
+  async tryRosettaAdapter(
+    name: string,
+    questions: string[],
+    history: { question: string; without: string; with: string }[],
+    maxNew: number
+  ) {
+    return this.rosetta(() =>
+      this.client.post<{ success: boolean }>(
+        '/rosetta-jane/adapters/try',
+        { name, questions, history, maxNew },
+        { timeout: 180_000 }
+      )
+    )
+  }
+
+  async stopRosettaAdapterJob() {
+    return this.rosetta(() => this.client.post<{ success: boolean }>('/rosetta-jane/adapters/stop'))
+  }
+
+  async getRosettaScoreCard(name: string) {
+    return this.rosetta(() =>
+      this.client.get<{ lines: string[]; shareText: string }>(
+        `/rosetta-jane/adapters/${encodeURIComponent(name)}/score-card`
+      )
+    )
+  }
+
+  async stopRosettaTraining() {
+    return this.rosetta(() => this.client.post<{ success: boolean }>('/rosetta-jane/train/stop'))
   }
 
   async updateSetting(key: string, value: any) {

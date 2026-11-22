@@ -6,25 +6,26 @@
 | The routes file is used for defining the HTTP routes.
 |
 */
-import BenchmarkController from '#controllers/benchmark_controller'
-import ChatsController from '#controllers/chats_controller'
-import ConditionsController from '#controllers/conditions_controller'
-import DocsController from '#controllers/docs_controller'
-import DrugReferenceController from '#controllers/drug_reference_controller'
-import DownloadsController from '#controllers/downloads_controller'
-import EasySetupController from '#controllers/easy_setup_controller'
-import HomeController from '#controllers/home_controller'
-import MapsController from '#controllers/maps_controller'
-import NomadMdController from '#controllers/nomad_md_controller'
-import OllamaController from '#controllers/ollama_controller'
-import OpenApiController from '#controllers/openapi_controller'
-import RagController from '#controllers/rag_controller'
-import SettingsController from '#controllers/settings_controller'
-import SupplyDepotController from '#controllers/supply_depot_controller'
-import SystemController from '#controllers/system_controller'
-import CollectionUpdatesController from '#controllers/collection_updates_controller'
-import CreatorPacksController from '#controllers/creator_packs_controller'
-import ZimController from '#controllers/zim_controller'
+const BenchmarkController = () => import('#controllers/benchmark_controller')
+const ChatsController = () => import('#controllers/chats_controller')
+const ConditionsController = () => import('#controllers/conditions_controller')
+const DocsController = () => import('#controllers/docs_controller')
+const DrugReferenceController = () => import('#controllers/drug_reference_controller')
+const DownloadsController = () => import('#controllers/downloads_controller')
+const EasySetupController = () => import('#controllers/easy_setup_controller')
+const HomeController = () => import('#controllers/home_controller')
+const MapsController = () => import('#controllers/maps_controller')
+const NomadMdController = () => import('#controllers/nomad_md_controller')
+const OllamaController = () => import('#controllers/ollama_controller')
+const RosettaJaneController = () => import('#controllers/rosetta_jane_controller')
+const OpenApiController = () => import('#controllers/openapi_controller')
+const RagController = () => import('#controllers/rag_controller')
+const SettingsController = () => import('#controllers/settings_controller')
+const SupplyDepotController = () => import('#controllers/supply_depot_controller')
+const SystemController = () => import('#controllers/system_controller')
+const CollectionUpdatesController = () => import('#controllers/collection_updates_controller')
+const CreatorPacksController = () => import('#controllers/creator_packs_controller')
+const ZimController = () => import('#controllers/zim_controller')
 import router from '@adonisjs/core/services/router'
 import transmit from '@adonisjs/transmit/services/main'
 import { documented } from '#start/openapi/documented'
@@ -70,17 +71,15 @@ import {
   serviceLogsValidator,
   updateCustomAppValidator,
 } from '#validators/system'
+import { chatSchema, unloadChatModelsSchema, getAvailableModelsSchema } from '#validators/ollama'
 import {
-  chatSchema,
-  unloadChatModelsSchema,
-  getAvailableModelsSchema,
-} from '#validators/ollama'
+  rosettaConnectSchema,
+  rosettaServiceSchema,
+  rosettaTrainSchema,
+  rosettaTrySchema,
+} from '#validators/rosetta_jane'
 import { getSettingSchema, updateSettingSchema } from '#validators/settings'
-import {
-  createSessionSchema,
-  updateSessionSchema,
-  addMessageSchema,
-} from '#validators/chat'
+import { createSessionSchema, updateSessionSchema, addMessageSchema } from '#validators/chat'
 import { downloadJobsByFiletypeSchema, modelNameSchema } from '#validators/download'
 import { runBenchmarkValidator, submitBenchmarkValidator } from '#validators/benchmark'
 import { healthResponse, errorResponse } from '#validators/responses/common'
@@ -149,6 +148,7 @@ router
     router.get('/benchmark', [SettingsController, 'benchmark'])
     router.get('/support', [SettingsController, 'support'])
     router.get('/advanced', [SettingsController, 'advanced'])
+    router.get('/rosetta-jane', [RosettaJaneController, 'page'])
   })
   .prefix('/settings')
 
@@ -176,10 +176,13 @@ router
       summary: 'List curated map collections',
       tags: ['maps'],
     })
-    documented(router.post('/fetch-latest-collections', [MapsController, 'fetchLatestCollections']), {
-      summary: 'Fetch the latest map collections',
-      tags: ['maps'],
-    })
+    documented(
+      router.post('/fetch-latest-collections', [MapsController, 'fetchLatestCollections']),
+      {
+        summary: 'Fetch the latest map collections',
+        tags: ['maps'],
+      }
+    )
     documented(router.post('/download-base-assets', [MapsController, 'downloadBaseAssets']), {
       summary: 'Download base map assets',
       tags: ['maps'],
@@ -194,11 +197,14 @@ router
       tags: ['maps'],
       request: remoteDownloadValidator,
     })
-    documented(router.post('/download-remote-preflight', [MapsController, 'downloadRemotePreflight']), {
-      summary: 'Preflight a remote map download',
-      tags: ['maps'],
-      request: remoteDownloadValidator,
-    })
+    documented(
+      router.post('/download-remote-preflight', [MapsController, 'downloadRemotePreflight']),
+      {
+        summary: 'Preflight a remote map download',
+        tags: ['maps'],
+        request: remoteDownloadValidator,
+      }
+    )
     documented(router.post('/download-collection', [MapsController, 'downloadCollection']), {
       summary: 'Download a map collection',
       tags: ['maps'],
@@ -348,6 +354,68 @@ router
     })
   })
   .prefix('/api/ollama')
+
+router
+  .group(() => {
+    documented(router.get('/overview', [RosettaJaneController, 'overview']), {
+      summary: 'Get the Rosetta-Jane connection and what its swarm looks like',
+      tags: ['rosetta-jane'],
+    })
+    documented(router.post('/connect', [RosettaJaneController, 'connect']), {
+      summary: 'Connect to a Rosetta-Jane gateway',
+      tags: ['rosetta-jane'],
+      request: rosettaConnectSchema,
+    })
+    documented(router.post('/disconnect', [RosettaJaneController, 'disconnect']), {
+      summary: 'Forget the Rosetta-Jane gateway',
+      tags: ['rosetta-jane'],
+    })
+    documented(router.post('/service', [RosettaJaneController, 'service']), {
+      summary: 'Switch the p2p service on this machine on or off',
+      tags: ['rosetta-jane'],
+      request: rosettaServiceSchema,
+    })
+    documented(router.post('/train', [RosettaJaneController, 'train']), {
+      summary: 'Start a training run through the swarm',
+      tags: ['rosetta-jane'],
+      request: rosettaTrainSchema,
+    })
+    documented(router.post('/train/stop', [RosettaJaneController, 'stopTraining']), {
+      summary: 'Stop the current training run',
+      tags: ['rosetta-jane'],
+    })
+    documented(router.post('/adapters/import', [RosettaJaneController, 'importAdapter']), {
+      summary: 'Add an adapter someone shared, to try and score (never applied)',
+      tags: ['rosetta-jane'],
+    })
+    documented(router.post('/adapters/score', [RosettaJaneController, 'scoreAdapter']), {
+      summary: "Score an adapter on the user's own questions",
+      tags: ['rosetta-jane'],
+    })
+    documented(router.post('/adapters/try', [RosettaJaneController, 'tryAdapter']), {
+      summary: 'Try an adapter: each question answered without it and with it',
+      tags: ['rosetta-jane'],
+      request: rosettaTrySchema,
+    })
+    documented(router.post('/adapters/stop', [RosettaJaneController, 'stopAdapterJob']), {
+      summary: 'Stop the current scoring or trial',
+      tags: ['rosetta-jane'],
+    })
+    documented(router.get('/model-adapter-score', [RosettaJaneController, 'scoreDocument']), {
+      summary:
+        'Download the Model Adapter Score document: every adapter beside the unchanged model',
+      tags: ['rosetta-jane'],
+    })
+    documented(router.get('/adapters/:name/score-card', [RosettaJaneController, 'scoreCard']), {
+      summary: "Get a finished adapter's score card as shareable text",
+      tags: ['rosetta-jane'],
+    })
+    documented(router.get('/adapters/:name', [RosettaJaneController, 'downloadAdapter']), {
+      summary: 'Download a finished adapter (never applied automatically)',
+      tags: ['rosetta-jane'],
+    })
+  })
+  .prefix('/api/rosetta-jane')
 
 router
   .group(() => {
@@ -559,11 +627,14 @@ router
       tags: ['system'],
       request: installServiceValidator,
     })
-    documented(router.post('/services/force-reinstall', [SystemController, 'forceReinstallService']), {
-      summary: 'Force reinstall a service',
-      tags: ['system'],
-      request: installServiceValidator,
-    })
+    documented(
+      router.post('/services/force-reinstall', [SystemController, 'forceReinstallService']),
+      {
+        summary: 'Force reinstall a service',
+        tags: ['system'],
+        request: installServiceValidator,
+      }
+    )
     documented(router.post('/services/uninstall', [SystemController, 'uninstallService']), {
       summary: 'Uninstall a service',
       tags: ['system'],
@@ -582,11 +653,14 @@ router
       summary: 'Suggest an available custom port',
       tags: ['system'],
     })
-    documented(router.post('/services/preflight-custom', [SystemController, 'preflightCustomApp']), {
-      summary: 'Preflight a custom app install',
-      tags: ['system'],
-      request: preflightCustomValidator,
-    })
+    documented(
+      router.post('/services/preflight-custom', [SystemController, 'preflightCustomApp']),
+      {
+        summary: 'Preflight a custom app install',
+        tags: ['system'],
+        request: preflightCustomValidator,
+      }
+    )
     documented(router.post('/services/custom', [SystemController, 'createCustomApp']), {
       summary: 'Create a custom app',
       tags: ['system'],
@@ -597,11 +671,14 @@ router
       tags: ['system'],
       request: updateCustomAppValidator,
     })
-    documented(router.post('/services/custom/update', [SystemController, 'updateCustomApp_pullLatest']), {
-      summary: 'Pull the latest version of a custom app',
-      tags: ['system'],
-      request: installServiceValidator,
-    })
+    documented(
+      router.post('/services/custom/update', [SystemController, 'updateCustomApp_pullLatest']),
+      {
+        summary: 'Pull the latest version of a custom app',
+        tags: ['system'],
+        request: installServiceValidator,
+      }
+    )
     documented(router.delete('/services/custom', [SystemController, 'deleteCustomApp']), {
       summary: 'Delete a custom app',
       tags: ['system'],
@@ -637,10 +714,13 @@ router
       summary: 'Get service stats',
       tags: ['system'],
     })
-    documented(router.get('/services/:name/available-versions', [SystemController, 'getAvailableVersions']), {
-      summary: 'List available service versions',
-      tags: ['system'],
-    })
+    documented(
+      router.get('/services/:name/available-versions', [SystemController, 'getAvailableVersions']),
+      {
+        summary: 'List available service versions',
+        tags: ['system'],
+      }
+    )
     documented(router.post('/services/update', [SystemController, 'updateService']), {
       summary: 'Update a service',
       tags: ['system'],
@@ -651,19 +731,28 @@ router
       tags: ['system'],
       request: setServiceAutoUpdateValidator,
     })
-    documented(router.get('/apps/auto-update/status', [SystemController, 'getAppAutoUpdateStatus']), {
-      summary: 'Get app auto-update status',
-      tags: ['system'],
-    })
-    documented(router.get('/content/auto-update/status', [SystemController, 'getContentAutoUpdateStatus']), {
-      summary: 'Get content auto-update status',
-      tags: ['system'],
-    })
-    documented(router.post('/subscribe-release-notes', [SystemController, 'subscribeToReleaseNotes']), {
-      summary: 'Subscribe to release notes',
-      tags: ['system'],
-      request: subscribeToReleaseNotesValidator,
-    })
+    documented(
+      router.get('/apps/auto-update/status', [SystemController, 'getAppAutoUpdateStatus']),
+      {
+        summary: 'Get app auto-update status',
+        tags: ['system'],
+      }
+    )
+    documented(
+      router.get('/content/auto-update/status', [SystemController, 'getContentAutoUpdateStatus']),
+      {
+        summary: 'Get content auto-update status',
+        tags: ['system'],
+      }
+    )
+    documented(
+      router.post('/subscribe-release-notes', [SystemController, 'subscribeToReleaseNotes']),
+      {
+        summary: 'Subscribe to release notes',
+        tags: ['system'],
+        request: subscribeToReleaseNotesValidator,
+      }
+    )
     documented(router.get('/latest-version', [SystemController, 'checkLatestVersion']), {
       summary: 'Check the latest available version',
       tags: ['system'],

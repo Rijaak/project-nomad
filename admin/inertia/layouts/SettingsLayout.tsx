@@ -10,6 +10,7 @@ import {
   IconHeart,
   IconMapRoute,
   IconMovie,
+  IconNetwork,
   IconSettings,
   IconWand,
   IconZoom
@@ -41,6 +42,7 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
     { name: 'Content Manager', href: '/settings/zim', icon: IconFolder, current: false },
     ...(creatorPacksConfigured ? [{ name: 'Creator Packs', href: '/settings/creator-packs', icon: IconMovie, current: false }] : []),
     { name: 'Maps Manager', href: '/settings/maps', icon: IconMapRoute, current: false },
+    { name: 'Rosetta-Jane', href: '/settings/rosetta-jane', icon: IconNetwork, current: false },
     {
       name: 'Service Logs & Metrics',
       href: getServiceLink('9999', serviceLogsUrlSetting?.value),

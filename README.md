@@ -115,6 +115,21 @@ By default, everything the AI Assistant does goes to the remote server once one 
 
 These controls cover what NOMAD sends. Text you type or paste into a chat that is not Local Only goes to the remote server like any other message.
 
+##### Sharing the work with other people's devices (Rosetta-Jane)
+Build a better model, together. Don't be limited by personal hardware. Pool your machines as a community to teach a model what we all need it to know. When training is done, download the result, score it, and use it offline. The network is only needed while training and scoring. Or stay connected and pool processing power to run models too big for one machine, and bring phones into the same swarm with the Android app.
+
+Rosetta-Jane is a separate, peer-to-peer program that splits one model across a group of devices with no central server. It is not part of NOMAD and has its own license (GNU AGPL version 3); NOMAD only talks to it over the network. NOMAD can use it in three ways from **Settings > Rosetta-Jane**: answer chats with a model too large for the NOMAD host, run the p2p service on the NOMAD host for your group, and train a model on your own question and answer pairs. Start the gateway on the NOMAD host with `rosetta_jane gateway --controls --api 0.0.0.0:11435`, then enter its address and the control token it saves in its work folder.
+
+This is the opposite of NOMAD's offline default: devices that help receive an encoded form of your whole question or training text, which can be turned back into an approximation of it. Use a group code shared only with people you trust. Knowledge Base indexing stays on the NOMAD host, and the **Private** and **Local Only** controls above apply to the swarm exactly as they do to any remote server.
+
+Before running the p2p service on the NOMAD host, know what it does: on the `public` network the host computes layers for whatever strangers ask and cannot see or filter it; it receives processed numbers, never the text; it needs an open port or a tunnel, so a bug in the program could expose the host (a mesh VPN such as Tailscale with a group code avoids the open port); and it uses the host's hardware, power and bandwidth. The service is safest inside a group code, where every peer is someone you chose, and comes with no warranty.
+
+Check the terms of any model you load into Rosetta-Jane: serving runs it for other people and training builds on it, and many models' terms say what is allowed for both.
+
+Every training run keeps some of your pairs back, never trains on them, and uses them to score the result: the unchanged model against the model with the adapter. Anyone in the group can score an adapter again on their own questions. A score card stays with the person who made it unless they choose to share it. The "Model Adapter Score" button downloads one landscape page that sets every adapter beside the unchanged model, arranged by model, then by adapter, with the best first.
+
+Finished training is never applied for you. The page offers each trained adapter as a download with a note on how much of its training was checked, and stops there. That is a purposeful speed bump: part of the work was done on other people's hardware, an adapter changes every answer that follows, and whether one deserves to be used is a judgement for a person to make, one adapter at a time. If you build on Rosetta-Jane or on this page, keep this step. Removing it trades a minute of someone's attention for the one safeguard that does not depend on the network behaving.
+
 ## Frequently Asked Questions (FAQ)
 For answers to common questions about Project NOMAD, please see our [FAQ](FAQ.md) page.
 

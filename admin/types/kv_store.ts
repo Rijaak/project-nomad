@@ -57,6 +57,15 @@ export const KV_STORE_SCHEMA = {
   'ai.assistantCustomName':     'string',
   'gpu.type':                   'string',
   'ai.remoteOllamaUrl':         'string',
+  // Address of a Rosetta-Jane gateway: the peer-to-peer backend that answers and
+  // trains through other people's devices. Managed from Settings > Rosetta-Jane.
+  // Deliberately absent from SETTINGS_KEYS, like the token below: both are set
+  // only through the Rosetta-Jane endpoints, which test the gateway first, and
+  // the token must never be readable through the generic settings API.
+  'ai.rosettaJaneUrl':          'string',
+  // Secret the gateway requires before it changes anything (lending, training)
+  // or hands over a trained adapter. Server-side only.
+  'ai.rosettaJaneToken':        'string',
   // When a remote AI server is configured but cannot be reached, answer from the
   // local Ollama container instead of failing, and go back to the remote by
   // itself once it responds again. Off/unset keeps the original behaviour: a
